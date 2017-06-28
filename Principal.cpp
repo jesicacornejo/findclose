@@ -60,7 +60,6 @@ ulong endIndexPila=0; //Marca el limite superior de la estructuras Pila de acuer
 ///<------------------------------ fin PILA
 //-----------------------------------------------------------------
 
-//TODO BORRAR char bitsToAnd[8] = {128, 64, 32, 16, 8, 4, 2, 1} ;
 
 ///------------------------------> Arreglos con los resultados del findClose ------------------------------------------------------------
 // arreglos por separados para guardar el resultado de cada nivel del findClose
@@ -101,6 +100,9 @@ void verif(void *p)
 		error ("sin memoria\n");
 }
 
+//==============================================================================================================
+//================================> INICIO METODOS para las estructuras con el RESULTADO DEL FINDCLOSE
+
 //-----------------------------------------------------------------
 /** Asignar espacio si hace falta para estructura de tipo ulong (Nodes, Leaves, PositionClose)
 //-----------------------------------------------------------------
@@ -112,21 +114,6 @@ void verif(void *p)
  */
 void addSpaceStructUlong(ulong **arrayULong, ulong *totalCount, ulong *usedCount, int countToRequest, ulong posToInsert)
 {
-	////// **** DARIO ****
-	/* if ( *usedCount == totalCount )//
-	{   int i=0;
-        *usedCount=*usedCount+countToRequest;
-		*arrayULong=(ulong *)realloc(*arrayULong,((*totalCount)*sizeof(ulong)));
-		verif(*arrayULong);
-		while (i<countToRequest)
-		{
-			(*arrayULong)[totalCount]=0;
-			i++;
-			totalCount++;
-		}
-	} */
-
-	////// **** MIO ****
 	int i= *totalCount;
 	while(posToInsert >= *totalCount)
 	{
@@ -142,6 +129,8 @@ void addSpaceStructUlong(ulong **arrayULong, ulong *totalCount, ulong *usedCount
 		i++;
 	}
 }
+//<================================ fin METODOS para las estructuras con el RESULTADO DEL FINDCLOSE
+
 
 
 //==============================================================================================================
@@ -167,26 +156,8 @@ void verifySpace(void *p)
 //blk_pila cantidad de bloques de asignación de memoria a solicitar
 void addSpacePila(tipoPila ***ptr, ulong n, ulong *end_index, int blk_pila)
 {
-	/* MIO
-	**ptr=(tipoPila *)realloc(**ptr,((*end_index)*sizeof(tipoPila)));
-	verifySpace(**ptr);
-
-	int i=0;
-	while (i < blk_pila) //Inicializamos los campos de la pila recién asignados
+	if( *end_index == n )
 	{
-		(**ptr)[n].positionArray=0;
-		(**ptr)[n].nodes=0;
-		(**ptr)[n].leaves=0;
-		(**ptr)[n].positionBit=0;
-		i++;
-		n++;
-	}*/
-
-	// Dario
-	//IFSPACE_pila(tipoPila ***ptr,ulong n,ulong *end_index, int blk_pila) {
-	if( *end_index == n )//
-	{
-		//tipoPila *aux, *borrar;
 		int i=0;
 		*end_index=*end_index+blk_pila;//
 		**ptr=(tipoPila *)realloc(**ptr,((*end_index)*sizeof(tipoPila)));
@@ -201,8 +172,6 @@ void addSpacePila(tipoPila ***ptr, ulong n, ulong *end_index, int blk_pila)
 			n++;
 		}
 	}
-
-
 }
 
 void push(tipoPila **l, tipoPila v){
@@ -292,12 +261,6 @@ void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char su
 }
 //<================================ fin METODOS PILA
 
-//==============================================================================================================
-//================================> INICIO METODOS para las estructuras con el RESULTADO DEL FINDCLOSE
-
-
-//<================================ fin METODOS para las estructuras con el RESULTADO DEL FINDCLOSE
-
 
 /**
  * text: arreglo de caracteres que contiene el texto en bytes.
@@ -308,14 +271,6 @@ void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char su
  */
 void findClose(unsigned char text[], int size, int bitsCount)
 {
-	/*cout << "estoy dentro del findClose";
-	for(int i =0; i<size ; i++)
-	{
-		cout << "allText[" << i << "] = " << text[i] << endl;
-	}*/
-
-	// *************************** new (con recomendaciones de Dario usando div y mod y &) ***************************
-	// ********************** REVEER TODO DESDE LA COMPARACION DE SI ES UN 1 O UN 0.
 		int arrayPos = 0;
 		int bitToByte = 0;
 		bool lastWasZero=false;
@@ -417,24 +372,6 @@ void findClose(unsigned char text[], int size, int bitsCount)
 
 					//incremento posbit
 					nodoPila.positionBit = eachBit;
-
-					/*if(empty())
-					{
-						nodoPila.positionArray = positionArrayClose;
-					}
-					else
-					{
-						if(lastPosArrayUsed > positionArrayClose) //pila[topePila].positionArray > positionArrayClose)
-						{
-							//nodoPila.positionArray = pila[topePila].positionArray + 1;
-							lastPosArrayUsed = lastPosArrayUsed + 1;
-						}
-						else
-						{
-							lastPosArrayUsed = positionArrayClose + 1;
-						}
-						nodoPila.positionArray = lastPosArrayUsed;
-					}*/
 
 					//anexo bit a cadena
 					//nodoPila.subString = nodoPila.subString << 1;
