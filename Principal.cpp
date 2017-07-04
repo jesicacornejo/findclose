@@ -269,15 +269,12 @@ void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char su
  * 		por ejemplo el texto = 11001001110 tiene 11 bits que seran recibidos como 2 bytes (en text[]) un byte = 11001001, otro byte = 11000000 este ultimo se completa con 0's
  *
  */
-void findClose(unsigned char text[], int size, int bitsCount)
+void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 {
 		int arrayPos = 0;
 		int bitToByte = 0;
 		bool lastWasZero=false;
 		topePila=-1;
-
-		//chequear si la pila esta vacia o no ... ver create_index linea 763
-		//no es necesario porque el push si no tiene espacio lo pide
 
 		//declaro un nodo para la pila
 		tipoPila nodoPila;
@@ -299,17 +296,11 @@ void findClose(unsigned char text[], int size, int bitsCount)
 			if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 			{
 				cout << "es un UNO !!!! "<< endl<< endl;
-				//inicializo nodos
-				//inicializo hojas
+				//inicializo nodos y hojas
 				initNode(&nodoPila);
 
 				//copio la posicion del bit dentro de todo el array
 				nodoPila.positionBit = eachBit;
-
-				//anexo bit a la cadena
-				//TODO DUDAS ver con Dario porque para mi no es necesario guardar cada subcadena.
-				//nodoPila.subString = nodoPila.subString <<
-				//nodoPila.subString='1';
 
 				//subo en la pila
 				push(&pila, nodoPila);
@@ -337,8 +328,6 @@ void findClose(unsigned char text[], int size, int bitsCount)
 					lastPositionLeavesUsed = nodoPila.positionArray;
 					totalCountLeavesUsed ++;
 					leaves[pila[topePila].positionArray] = pila[topePila].leaves;
-					//(*leaves)[nodoPila.positionArray] = nodoPila.leaves;
-					//(*arrayULong)[i]
 
 					//c) guardo la posicion del bit
 					addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
@@ -365,23 +354,17 @@ void findClose(unsigned char text[], int size, int bitsCount)
 
 					cout << "es un CERO !!!! y el ultimo fue un UNO"<< endl<< endl;
 
-					//incremento nodos
-					//incremento hojas
+					//incremento nodos y hojas
 					nodoPila.nodes = nodoPila.nodes + 1;
 					nodoPila.leaves = nodoPila.leaves + 1;
 
 					//incremento posbit
 					nodoPila.positionBit = eachBit;
 
-					//anexo bit a cadena
-					//nodoPila.subString = nodoPila.subString << 1;
-					//nodoPila.subString = nodoPila.subString ^ '0';
-
 					//agregamos la info a la ultima posicion de la pila
 					pila[topePila].nodes = nodoPila.nodes;
 					pila[topePila].leaves = nodoPila.leaves;
 					pila[topePila].positionBit = nodoPila.positionBit;
-//					pila[topePila].positionArray = nodoPila.positionArray;
 
 					if(topePila > 0)
 					{
@@ -424,7 +407,7 @@ int main (int argc, char *argv[])
 	allText[2] = 166;	//10100110 = 128+0+32+0+0+4+2+0 = 166
 	allText[3] = 181;	//10110101 = 128+0+32+16+0+4+0+1 = 181
 	allText[4] = 0; 	//00000000 = 0
-	findClose(allText, 5, 36);
+	buildFindClose(allText, 5, 36, 2);
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
