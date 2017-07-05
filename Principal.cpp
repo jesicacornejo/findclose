@@ -394,8 +394,39 @@ void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 		{
 			cout << "positionClose[" << i << "] = " << positionClose[i] << endl;
 		}
+}
+
+void findClose(int currentPosition, int currentLevel, int givenLevel)
+{
+	if(es_hoja(currentPosition))
+		return currentPosition++;
+
+	if(currentLevel < givenLevel)
+	{
+		//usar estructura mia para saber donde cierra X nodo
+		//return positionClose[estruc_q_falta[currentPosition]]
+	}
+	else
+	{
+		//usar el findClose de Dario
+	}
+}
+
+void getStatics(unsigned char text[], int size, int bitsCount, int givenLevel)
+{
+	int currentLevel = 0;
+	char condition = 'c';
+	int currentPosition = 0;
+
+	//si es un 1 y esta abierto ('A') -> incremento nivel (no modifica la condicion)
+	//si es un 1 y esta cerrado ('C') -> lo abro ('A')
+	//si es un 0 y esta abierto ('A') -> lo cierra ('C')
+	//si es un 0 y esta cerrado ('C') -> decrementa nivel
+
+	findClose(currentPosition, currentLevel, givenLevel);
 
 }
+
 
 int main (int argc, char *argv[])
 {
@@ -408,6 +439,8 @@ int main (int argc, char *argv[])
 	allText[3] = 181;	//10110101 = 128+0+32+16+0+4+0+1 = 181
 	allText[4] = 0; 	//00000000 = 0
 	buildFindClose(allText, 5, 36, 2);
+
+	findClose(allText);
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
