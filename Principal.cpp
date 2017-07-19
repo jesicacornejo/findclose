@@ -49,6 +49,7 @@ typedef struct tipoPila {
 	ulong nodes;
 	ulong leaves;
 	ulong positionBit;
+	ulong positionInitial;
 //	char subString;
 } tipoPila;
 
@@ -168,6 +169,7 @@ void addSpacePila(tipoPila ***ptr, ulong n, ulong *end_index, int blk_pila)
 			(**ptr)[n].nodes=0;
 			(**ptr)[n].leaves=0;
 			(**ptr)[n].positionBit=0;
+			(**ptr)[n].positionInitial=0;
 			i++;
 			n++;
 		}
@@ -182,6 +184,7 @@ void push(tipoPila **l, tipoPila v){
 	(*l)[topePila].nodes = v.nodes;
 	(*l)[topePila].leaves = v.leaves;
 	(*l)[topePila].positionBit = v.positionBit;
+	(*l)[topePila].positionInitial = v.positionInitial;
 
 };
 
@@ -234,6 +237,7 @@ void initNode(tipoPila *nodoPila)
 	nodoPila->nodes=0;
 	nodoPila->leaves=0;
 	nodoPila->positionBit=0;
+	nodoPila->positionInitial=0;
 	if(topePila >= 0)
 	{
 		if(pila[topePila].positionArray > positionArrayClose)
@@ -271,136 +275,146 @@ void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char su
  */
 void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 {
-		int arrayPos = 0;
-		int bitToByte = 0;
-		bool lastWasZero=false;
-		topePila=-1;
+	int arrayPos = 0;
+	int bitToByte = 0;
+	bool lastWasZero=false;
+	topePila=-1;
 
-		//declaro un nodo para la pila
-		tipoPila nodoPila;
+	//declaro un nodo para la pila
+	tipoPila nodoPila;
 
-		//itero cada bit segun la cantidad de bits que me pasaron por parametro
-		for(int eachBit=0; eachBit < bitsCount; eachBit++)
+	//itero cada bit segun la cantidad de bits que me pasaron por parametro
+	for(int eachBit=0; eachBit < bitsCount; eachBit++)
+	{
+		arrayPos = (eachBit >> 3);
+		bitToByte = (eachBit & 7); //va de 0 a 7
+
+		cout << "eachBit:   " << eachBit << endl;
+		//cout << "bitsCount: " << bitsCount;
+		cout << "arrayPos:  " << arrayPos << endl;
+		cout << "bitToByte: " << bitToByte << endl;
+
+		//cout << "text[arrayPos]: " << text[arrayPos];
+
+		//evaluo si en esa posicion hay un '1' o un '0'
+		// 128 >> bitToByte = 128>>0 o 128>>1 o 128>>2 o 128>>3 o .... 128>>7. Osea va corriendo el 1 de 10000000 (128)
+		if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 		{
-			arrayPos = (eachBit >> 3);
-			bitToByte = (eachBit & 7); //va de 0 a 7
+			cout << "es un UNO !!!! "<< endl<< endl;
+			//inicializo nodos y hojas
+			initNode(&nodoPila);
 
-			cout << "eachBit:   " << eachBit << endl;
-			//cout << "bitsCount: " << bitsCount;
-			cout << "arrayPos:  " << arrayPos << endl;
-			cout << "bitToByte: " << bitToByte << endl;
+			//copio la posicion del bit dentro de todo el array
+			nodoPila.positionBit = eachBit;
 
-			cout << "text[arrayPos]: " << text[arrayPos];
-			//evaluo si en esa posicion hay un '1' o un '0'
-			// 128 >> bitToByte = 128>>0 o 128>>1 o 128>>2 o 128>>3 o .... 128>>7. Osea va corriendo el 1 de 10000000 (128)
-			if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
-			{
-				cout << "es un UNO !!!! "<< endl<< endl;
-				//inicializo nodos y hojas
-				initNode(&nodoPila);
+			//seteo donde comienza el nodo
+			nodoPila.positionInitial = eachBit;
 
-				//copio la posicion del bit dentro de todo el array
-				nodoPila.positionBit = eachBit;
+			//subo en la pila
+			push(&pila, nodoPila);
 
-				//subo en la pila
-				push(&pila, nodoPila);
+			lastWasZero = false;
+		}
+		else
+		{
+			if(lastWasZero)
+			{// si anterior fue un cero
 
-				lastWasZero = false;
+				cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
+				//1- guardo la posicion del bit que estoy mirando
+				pila[topePila].positionBit = eachBit;
+
+				//2- guardo en los arreglos de resultados de findClose cada valor
+				//a) guardo en arreglo de nodos
+				addSpaceStructUlong(&nodes, &totalCountNodes, &totalCountNodesUsed, numberNodesToRequest, nodoPila.positionArray);
+				lastPositionNodesUsed = nodoPila.positionArray; //TODO si no se usa eliminar declaracion y referencias
+				totalCountNodesUsed ++;
+				nodes[pila[topePila].positionArray] = pila[topePila].nodes;
+
+				//b) guardo en arreglo de hojas
+				addSpaceStructUlong(&leaves, &totalCountLeaves, &totalCountLeavesUsed, numberLeavesToRequest, nodoPila.positionArray);
+				lastPositionLeavesUsed = nodoPila.positionArray;
+				totalCountLeavesUsed ++;
+				leaves[pila[topePila].positionArray] = pila[topePila].leaves;
+
+				//c) guardo la posicion del bit
+				addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
+				lastPositionPositionCloseUsed = nodoPila.positionArray;
+				totalCountPositionCloseUsed ++;
+
+				positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
+
+				//3-Guardo en el mapa
+				/*
+				Map mapa;
+				mapa.add(pila[topePila].positionInitial, pila[topePila].positionArray);
+				println "inicia en " + pila[topePila].positionInitial";
+				 */
+				cout << "inicia en = " << pila[topePila].positionInitial ;
+				cout << "   el resultado esta en = " << pila[topePila].positionArray << endl;
+
+				//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
+				if(positionArrayClose < pila[topePila].positionArray)
+					positionArrayClose = pila[topePila].positionArray;
+
+				if(topePila > 0)
+				{
+					//5- Bajo la informacion a la posicion anterior en la pila
+					copyPreviousElement(&pila, lastWasZero);
+
+					//6- Pop pila
+					pop();
+				}
 			}
 			else
-			{
-				if(lastWasZero)
-				{// si anterior fue un cero
+			{// si anterior fue un uno
 
-					cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
-					//1- guardo la posicion del bit que estoy mirando
-					pila[topePila].positionBit = eachBit;
+				cout << "es un CERO !!!! y el ultimo fue un UNO"<< endl<< endl;
 
-					//2- guardo en los arreglos de resultados de findClose cada valor
-					//a) guardo en arreglo de nodos
-					addSpaceStructUlong(&nodes, &totalCountNodes, &totalCountNodesUsed, numberNodesToRequest, nodoPila.positionArray);
-					lastPositionNodesUsed = nodoPila.positionArray; //TODO si no se usa eliminar declaracion y referencias
-					totalCountNodesUsed ++;
-					nodes[pila[topePila].positionArray] = pila[topePila].nodes;
+				//incremento nodos y hojas
+				nodoPila.nodes = nodoPila.nodes + 1;
+				nodoPila.leaves = nodoPila.leaves + 1;
 
-					//b) guardo en arreglo de hojas
-					addSpaceStructUlong(&leaves, &totalCountLeaves, &totalCountLeavesUsed, numberLeavesToRequest, nodoPila.positionArray);
-					lastPositionLeavesUsed = nodoPila.positionArray;
-					totalCountLeavesUsed ++;
-					leaves[pila[topePila].positionArray] = pila[topePila].leaves;
+				//incremento posbit
+				nodoPila.positionBit = eachBit;
 
-					//c) guardo la posicion del bit
-					addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
-					lastPositionPositionCloseUsed = nodoPila.positionArray;
-					totalCountPositionCloseUsed ++;
+				//agregamos la info a la ultima posicion de la pila
+				pila[topePila].nodes = nodoPila.nodes;
+				pila[topePila].leaves = nodoPila.leaves;
+				pila[topePila].positionBit = nodoPila.positionBit;
 
-					positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
+				if(topePila > 0)
+				{
+					//Anexo la informacion a la posicion anterior en la pila
+					copyPreviousElement(&pila, lastWasZero);
 
-					//3- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
-					if(positionArrayClose < pila[topePila].positionArray)
-						positionArrayClose = pila[topePila].positionArray;
-
-					if(topePila > 0)
-					{
-						//4- Bajo la informacion a la posicion anterior en la pila
-						copyPreviousElement(&pila, lastWasZero);
-
-						//5- Pop pila
-						pop();
-					}
+					//Pop pila
+					pop();
 				}
-				else
-				{// si anterior fue un uno
-
-					cout << "es un CERO !!!! y el ultimo fue un UNO"<< endl<< endl;
-
-					//incremento nodos y hojas
-					nodoPila.nodes = nodoPila.nodes + 1;
-					nodoPila.leaves = nodoPila.leaves + 1;
-
-					//incremento posbit
-					nodoPila.positionBit = eachBit;
-
-					//agregamos la info a la ultima posicion de la pila
-					pila[topePila].nodes = nodoPila.nodes;
-					pila[topePila].leaves = nodoPila.leaves;
-					pila[topePila].positionBit = nodoPila.positionBit;
-
-					if(topePila > 0)
-					{
-						//Anexo la informacion a la posicion anterior en la pila
-						copyPreviousElement(&pila, lastWasZero);
-
-						//Pop pila
-						pop();
-					}
-				}
-				lastWasZero = true;
 			}
+			lastWasZero = true;
 		}
+	}
 
-		cout << endl << "NODES" << endl;
-		for(int i =0; i< totalCountNodesUsed ; i++)
-		{
-			cout << "nodes[" << i << "] = " << nodes[i] << endl;
-		}
-		cout << endl << "LEAVES" << endl;
-		for(int i =0; i< totalCountLeavesUsed ; i++)
-		{
-			cout << "leaves[" << i << "] = " << leaves[i] << endl;
-		}
-		cout << endl << "POSITIONES CLOSE" << endl;
-		for(int i =0; i< totalCountPositionCloseUsed ; i++)
-		{
-			cout << "positionClose[" << i << "] = " << positionClose[i] << endl;
-		}
+	cout << endl << "NODES" << endl;
+	for(int i =0; i< totalCountNodesUsed ; i++)
+	{
+		cout << "nodes[" << i << "] = " << nodes[i] << endl;
+	}
+	cout << endl << "LEAVES" << endl;
+	for(int i =0; i< totalCountLeavesUsed ; i++)
+	{
+		cout << "leaves[" << i << "] = " << leaves[i] << endl;
+	}
+	cout << endl << "POSITIONES CLOSE" << endl;
+	for(int i =0; i< totalCountPositionCloseUsed ; i++)
+	{
+		cout << "positionClose[" << i << "] = " << positionClose[i] << endl;
+	}
 }
 
 void findClose(int currentPosition, int currentLevel, int givenLevel)
 {
-	if(es_hoja(currentPosition))
-		return currentPosition++;
-
 	if(currentLevel < givenLevel)
 	{
 		//usar estructura mia para saber donde cierra X nodo
@@ -412,22 +426,59 @@ void findClose(int currentPosition, int currentLevel, int givenLevel)
 	}
 }
 
+/*
 void getStatics(unsigned char text[], int size, int bitsCount, int givenLevel)
 {
-	int currentLevel = 0;
-	char condition = 'c';
+	ulong currentLevel = 0;
+	ulong statusNode = 'c';
 	int currentPosition = 0;
 
-	//si es un 1 y esta abierto ('A') -> incremento nivel (no modifica la condicion)
-	//si es un 1 y esta cerrado ('C') -> lo abro ('A')
-	//si es un 0 y esta abierto ('A') -> lo cierra ('C')
-	//si es un 0 y esta cerrado ('C') -> decrementa nivel
+	for(currentPosition; currentPosition < bitsCount; currentPosition++)
+	{
+		currentLevel = getCurrentLevel(text, currentPosition, &statusNode, currentLevel);
 
-	findClose(currentPosition, currentLevel, givenLevel);
+		//if(es_hoja(text, currentPosition))
+			//return currentPosition++;
+		findClose(currentPosition, currentLevel, givenLevel);
+	}
 
 }
 
+/**
+ * text		: contiene el texto a evaluar
+ * eachBit	: indica la posicion dentro del texto
+ * statusNode: nos indica si un nodo esta cerrado o abierto ('a'=abierto, 'c'=cerrado)
+ *
+ * Hace lo siguiente:
+ 	 - si en esa posicion hay un 1 y esta abierto ('a'=1) -> incremento nivel (no modifica la condicion)
+  	 - si en esa posicion hay un 1 y esta cerrado ('c'=0) -> lo abro ('a')
+ 	 - si en esa posicion hay un 0 y esta abierto ('a'=1) -> lo cierra ('c')
+  	 - si en esa posicion hay un 0 y esta cerrado ('c'=0) -> decrementa nivel
+ */
+/*
+ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
+{
+	int arrayPos = (currentPosition >> 3);
+	int bitToByte = (currentPosition & 7);
 
+	//evaluo si en esa posicion hay un '1' o un '0'
+	if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
+	{
+		if(statusNode == 1)
+			currentLevel++;
+		else
+			statusNode = 0;
+	}
+	else
+	{
+		if(statusNode == 1)
+			statusNode = 0;
+		else
+			currentLevel--;
+	}
+	return currentLevel;
+}
+*/
 int main (int argc, char *argv[])
 {
 	//original
@@ -440,7 +491,7 @@ int main (int argc, char *argv[])
 	allText[4] = 0; 	//00000000 = 0
 	buildFindClose(allText, 5, 36, 2);
 
-	findClose(allText);
+	//findClose(allText);
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
