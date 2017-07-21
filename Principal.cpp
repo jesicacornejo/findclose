@@ -87,6 +87,8 @@ ulong totalCountPositionCloseUsed = 0; 	//cantidad total de POSICIONES DE CIERRE
 ulong positionArrayClose = 0; //equiv a Posnivel
 ulong lastPosArrayUsed = 0;
 
+map<ulong,ulong> mapa;
+
 Principal::Principal() {
 	// TODO Auto-generated constructor stub
 }
@@ -271,12 +273,12 @@ void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char su
  * size: tamaño del arreglo de caracteres text.
  * bitsCount: cantidad de bits porque puede que el texto tenga una cantidad de bits que no necesariamente sea multiplo de 8 (cant de bits en un byte)
  * 		por ejemplo el texto = 11001001110 tiene 11 bits que seran recibidos como 2 bytes (en text[]) un byte = 11001001, otro byte = 11000000 este ultimo se completa con 0's
- *
+ * level: indica el nivel hasta donde queremos calcular.
  */
-void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
+void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong level)
 {
-	int arrayPos = 0;
-	int bitToByte = 0;
+	ulong arrayPos = 0;
+	ulong bitToByte = 0;
 	bool lastWasZero=false;
 	topePila=-1;
 
@@ -284,7 +286,7 @@ void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 	tipoPila nodoPila;
 
 	//itero cada bit segun la cantidad de bits que me pasaron por parametro
-	for(int eachBit=0; eachBit < bitsCount; eachBit++)
+	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	{
 		arrayPos = (eachBit >> 3);
 		bitToByte = (eachBit & 7); //va de 0 a 7
@@ -345,13 +347,10 @@ void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 				positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
 
 				//3-Guardo en el mapa
-				/*
-				Map mapa;
-				mapa.add(pila[topePila].positionInitial, pila[topePila].positionArray);
-				println "inicia en " + pila[topePila].positionInitial";
-				 */
-				cout << "inicia en = " << pila[topePila].positionInitial ;
-				cout << "   el resultado esta en = " << pila[topePila].positionArray << endl;
+				mapa[pila[topePila].positionInitial] = pila[topePila].positionArray;
+				//mapa.add(pila[topePila].positionInitial, pila[topePila].positionArray);
+
+				cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
 
 				//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
 				if(positionArrayClose < pila[topePila].positionArray)
@@ -413,35 +412,21 @@ void buildFindClose(unsigned char text[], int size, int bitsCount, int level)
 	}
 }
 
-void findClose(int currentPosition, int currentLevel, int givenLevel)
+ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
 {
-	if(currentLevel < givenLevel)
-	{
+	ulong eachPositionClose;
+//	if(currentLevel < givenLevel)
+//	{
 		//usar estructura mia para saber donde cierra X nodo
 		//return positionClose[estruc_q_falta[currentPosition]]
-	}
+		eachPositionClose = positionClose[mapa[currentPosition]];
+/*	}
 	else
 	{
 		//usar el findClose de Dario
-	}
-}
-
-/*
-void getStatics(unsigned char text[], int size, int bitsCount, int givenLevel)
-{
-	ulong currentLevel = 0;
-	ulong statusNode = 'c';
-	int currentPosition = 0;
-
-	for(currentPosition; currentPosition < bitsCount; currentPosition++)
-	{
-		currentLevel = getCurrentLevel(text, currentPosition, &statusNode, currentLevel);
-
-		//if(es_hoja(text, currentPosition))
-			//return currentPosition++;
-		findClose(currentPosition, currentLevel, givenLevel);
-	}
-
+		//eachPositionClose =
+	}*/
+	return eachPositionClose;
 }
 
 /**
@@ -455,30 +440,65 @@ void getStatics(unsigned char text[], int size, int bitsCount, int givenLevel)
  	 - si en esa posicion hay un 0 y esta abierto ('a'=1) -> lo cierra ('c')
   	 - si en esa posicion hay un 0 y esta cerrado ('c'=0) -> decrementa nivel
  */
-/*
-ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
+
+ulong getCurrentLevel(unsigned char text[], ulong currentPosition, int *statusNode, ulong currentLevel)
 {
-	int arrayPos = (currentPosition >> 3);
-	int bitToByte = (currentPosition & 7);
+	ulong arrayPos = (currentPosition >> 3);
+	ulong bitToByte = (currentPosition & 7);
 
 	//evaluo si en esa posicion hay un '1' o un '0'
 	if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 	{
-		if(statusNode == 1)
+		if(*statusNode == 1)
 			currentLevel++;
 		else
 			statusNode = 0;
 	}
 	else
 	{
-		if(statusNode == 1)
+		if(*statusNode == 1)
 			statusNode = 0;
 		else
 			currentLevel--;
 	}
 	return currentLevel;
 }
-*/
+
+//es_hoja(unsigned char text[], int currentPosition)
+int es_hoja(unsigned char text[], ulong pos)
+{
+	ulong arrayPos = (pos >> 3);
+	ulong bitToByte = (pos++ & 7); //va de 0 a 7
+
+	//pos++;
+	if(text[arrayPos] & (128>> bitToByte))
+		return 0; //No es hoja
+	else
+		return 1; //es hoja
+
+}
+
+void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel)
+{
+	ulong currentLevel = 0;
+	int statusNode = 0; //0=cerrado, 1=abierto
+	ulong currentPosition = 0;
+	ulong eachPositionClose;
+
+	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
+	//for(currentPosition; currentPosition < bitsCount; currentPosition++)
+	{
+		currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
+
+		if(es_hoja(text, currentPosition))
+			eachPositionClose = (currentPosition+1);
+		else
+			eachPositionClose = findClose(eachBit, currentLevel, givenLevel);
+
+		cout << "La posicion " << currentPosition << " cierra en -> " << eachPositionClose << endl;
+	}
+}
+
 int main (int argc, char *argv[])
 {
 	//original
@@ -489,9 +509,10 @@ int main (int argc, char *argv[])
 	allText[2] = 166;	//10100110 = 128+0+32+0+0+4+2+0 = 166
 	allText[3] = 181;	//10110101 = 128+0+32+16+0+4+0+1 = 181
 	allText[4] = 0; 	//00000000 = 0
-	buildFindClose(allText, 5, 36, 2);
+	buildFindClose(allText, 5, 36, 3);
 
 	//findClose(allText);
+	getStatics(allText, 5, 36, 3);
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
