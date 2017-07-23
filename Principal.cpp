@@ -412,6 +412,32 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 	}
 }
 
+/**
+ * Me dice si en esa posicion del texto hay un 1 o un 0.
+ */
+int es_un_uno(unsigned char text[], ulong pos)
+{
+	ulong arrayPos = (pos >> 3);
+	ulong bitToByte = (pos & 7); //va de 0 a 7
+
+	if(text[arrayPos] & (128>> bitToByte))
+		return 1;
+	else
+		return 0;
+}
+
+/**
+ * Me dice si esa posicion es o no una hoja.
+ */
+int es_hoja(unsigned char text[], ulong pos)
+{
+	pos++;
+	if(es_un_uno(text, pos))
+		return 0; //No es hoja
+	else
+		return 1; //es hoja
+}
+
 ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
 {
 	ulong eachPositionClose;
@@ -443,8 +469,8 @@ ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
 
 ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
 {
-	ulong arrayPos = (currentPosition >> 3);
-	ulong bitToByte = (currentPosition & 7);
+//	ulong arrayPos = (currentPosition >> 3);
+//	ulong bitToByte = (currentPosition & 7);
 
 	if(currentPosition==0)
 	{
@@ -453,7 +479,8 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *status
 	}
 
 	//evaluo si en esa posicion hay un '1' o un '0'
-	if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
+	//if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
+	if(es_un_uno(text, currentPosition))
 	{
 		if(*statusNode == 1)
 			currentLevel++;
@@ -470,44 +497,13 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *status
 	return currentLevel;
 }
 
-
-int es_un_uno(unsigned char text[], ulong pos)
-{
-	ulong arrayPos = (pos >> 3);
-	ulong bitToByte = (pos & 7); //va de 0 a 7
-
-	if(text[arrayPos] & (128>> bitToByte))
-		return 1;
-	else
-		return 0;
-}
-
-//es_hoja(unsigned char text[], int currentPosition)
-int es_hoja(unsigned char text[], ulong pos)
-{
-	pos++;
-/*
-	ulong arrayPos = (pos >> 3);
-	ulong bitToByte = (pos & 7); //va de 0 a 7
-
-	//pos++;
-	if(text[arrayPos] & (128>> bitToByte))
-		*/
-	if(es_un_uno(text, pos))
-		return 0; //No es hoja
-	else
-		return 1; //es hoja
-}
-
 void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel)
 {
 	ulong currentLevel = 0;
 	ulong statusNode = 0; //0=cerrado, 1=abierto
-//	ulong currentPosition = 0;
 	ulong eachPositionClose;
 
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
-	//for(currentPosition; currentPosition < bitsCount; currentPosition++)
 	{
 		if(es_un_uno(text, eachBit))
 		{
