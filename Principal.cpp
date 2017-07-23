@@ -441,10 +441,16 @@ ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
   	 - si en esa posicion hay un 0 y esta cerrado ('c'=0) -> decrementa nivel
  */
 
-ulong getCurrentLevel(unsigned char text[], ulong currentPosition, int *statusNode, ulong currentLevel)
+ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
 {
 	ulong arrayPos = (currentPosition >> 3);
 	ulong bitToByte = (currentPosition & 7);
+
+	if(currentPosition==0)
+	{
+		*statusNode = 1;
+		return 0;
+	}
 
 	//evaluo si en esa posicion hay un '1' o un '0'
 	if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
@@ -452,50 +458,68 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, int *statusNo
 		if(*statusNode == 1)
 			currentLevel++;
 		else
-			statusNode = 0;
+			*statusNode = 0;
 	}
 	else
 	{
 		if(*statusNode == 1)
-			statusNode = 0;
+			*statusNode = 0;
 		else
 			currentLevel--;
 	}
 	return currentLevel;
 }
 
+
+int es_un_uno(unsigned char text[], ulong pos)
+{
+	ulong arrayPos = (pos >> 3);
+	ulong bitToByte = (pos & 7); //va de 0 a 7
+
+	if(text[arrayPos] & (128>> bitToByte))
+		return 1;
+	else
+		return 0;
+}
+
 //es_hoja(unsigned char text[], int currentPosition)
 int es_hoja(unsigned char text[], ulong pos)
 {
+	pos++;
+/*
 	ulong arrayPos = (pos >> 3);
-	ulong bitToByte = (pos++ & 7); //va de 0 a 7
+	ulong bitToByte = (pos & 7); //va de 0 a 7
 
 	//pos++;
 	if(text[arrayPos] & (128>> bitToByte))
+		*/
+	if(es_un_uno(text, pos))
 		return 0; //No es hoja
 	else
 		return 1; //es hoja
-
 }
 
 void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel)
 {
 	ulong currentLevel = 0;
-	int statusNode = 0; //0=cerrado, 1=abierto
-	ulong currentPosition = 0;
+	ulong statusNode = 0; //0=cerrado, 1=abierto
+//	ulong currentPosition = 0;
 	ulong eachPositionClose;
 
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	//for(currentPosition; currentPosition < bitsCount; currentPosition++)
 	{
-		currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
+		if(es_un_uno(text, eachBit))
+		{
+			currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
 
-		if(es_hoja(text, currentPosition))
-			eachPositionClose = (currentPosition+1);
-		else
-			eachPositionClose = findClose(eachBit, currentLevel, givenLevel);
+			if(es_hoja(text, eachBit))
+				eachPositionClose = (eachBit+1);
+			else
+				eachPositionClose = findClose(eachBit, currentLevel, givenLevel);
 
-		cout << "La posicion " << currentPosition << " cierra en -> " << eachPositionClose << endl;
+			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose << endl;
+		}
 	}
 }
 
