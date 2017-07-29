@@ -321,7 +321,8 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 		{
 			if(lastWasZero)
 			{// si anterior fue un cero
-
+if(topePila<=level)
+{
 				cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
 				//1- guardo la posicion del bit que estoy mirando
 				pila[topePila].positionBit = eachBit;
@@ -355,7 +356,7 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 				//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
 				if(positionArrayClose < pila[topePila].positionArray)
 					positionArrayClose = pila[topePila].positionArray;
-
+}
 				if(topePila > 0)
 				{
 					//5- Bajo la informacion a la posicion anterior en la pila
