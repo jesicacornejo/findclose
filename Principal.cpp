@@ -66,20 +66,17 @@ ulong endIndexPila=0; //Marca el limite superior de la estructuras Pila de acuer
 // arreglos por separados para guardar el resultado de cada nivel del findClose
 //1) Arreglo que guarda la cantidad de nodos (OJO: recordar que no se llena consecutivamente puede llenarse primero la posicion 3 luego la 1, luego la 4 y luego la 2)
 ulong *nodes;
-ulong lastPositionNodesUsed;	//ultima posicion del arreglo de nodos que esta en uso, OJO no se llena consecutivamente se puede llenar la posicion 3, luego la 1 y luego la 2.
 ulong totalCountNodes = 0; 		//cantidad total de nodos (usados + sin uso), cantidad de elementos asignados con el ralloc que no necesariamente significa que esten todos usados.
 ulong totalCountNodesUsed = 0; 	//cantidad total de NODOS USADOS.
 
 //2) Arreglo que guarda la cantidad de hojas
 ulong *leaves;
-ulong lastPositionLeavesUsed;	//ultima posicion del arreglo de hojas que esta en uso, OJO no se llena consecutivamente.
 ulong totalCountLeaves = 0; 	//cantidad total de hojas (usadas + sin uso), cantidad de elementos asignados con el ralloc que no necesariamente significa que esten todos usados.
 ulong totalCountLeavesUsed = 0; //cantidad total de HOJAS USADAS.
 
 
 //3) Arreglo que guarda las posiciones de cierre
 ulong *positionClose;
-ulong lastPositionPositionCloseUsed;	//ultima posicion del arreglo de posiciones de cierre que esta en uso, OJO no se llena consecutivamente.
 ulong totalCountPositionClose = 0; 		//cantidad total de posiciones de cierre (usadas + sin uso), cantidad de elementos asignados con el ralloc que no necesariamente significa que esten todos usados.
 ulong totalCountPositionCloseUsed = 0; 	//cantidad total de POSICIONES DE CIERRE USADAS
 ///<------------------------------------------------------------------------------------------------------------------------
@@ -330,27 +327,21 @@ if(topePila<=level)
 				//2- guardo en los arreglos de resultados de findClose cada valor
 				//a) guardo en arreglo de nodos
 				addSpaceStructUlong(&nodes, &totalCountNodes, &totalCountNodesUsed, numberNodesToRequest, nodoPila.positionArray);
-				lastPositionNodesUsed = nodoPila.positionArray; //TODO si no se usa eliminar declaracion y referencias
 				totalCountNodesUsed ++;
 				nodes[pila[topePila].positionArray] = pila[topePila].nodes;
 
 				//b) guardo en arreglo de hojas
 				addSpaceStructUlong(&leaves, &totalCountLeaves, &totalCountLeavesUsed, numberLeavesToRequest, nodoPila.positionArray);
-				lastPositionLeavesUsed = nodoPila.positionArray;
 				totalCountLeavesUsed ++;
 				leaves[pila[topePila].positionArray] = pila[topePila].leaves;
 
 				//c) guardo la posicion del bit
 				addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
-				lastPositionPositionCloseUsed = nodoPila.positionArray;
 				totalCountPositionCloseUsed ++;
-
 				positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
 
 				//3-Guardo en el mapa
 				mapa[pila[topePila].positionInitial] = pila[topePila].positionArray;
-				//mapa.add(pila[topePila].positionInitial, pila[topePila].positionArray);
-
 				cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
 
 				//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
