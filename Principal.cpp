@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <iostream>
 #include <stdio.h>
+#include <math.h>
+#include <string.h>
 #include <stdlib.h>
 using namespace std;
 
@@ -24,23 +26,518 @@ using namespace std;
 #define numberLeavesToRequest 10
 #define numberPositionCloseToRequest 10
 
-/// no usamos BORRAR!
-#define bit8 128
-#define bit7 64
-#define bit6 32
-#define bit5 16
-#define bit4 8
-#define bit3 4
-#define bit2 2
-#define bit1 1
-/////////
+/*
+ * ###################################### INICIO CODIGO Findclose Dario.######################################### */
+#define DIV(a) ((a)>> 3)
+#define MOD(a) ((a) & 7)
+
+// a/32 y a%32
+#define DIVb(a) ((a)>> 5)
+#define MODb(a) ((a) & 31)
+
+// a/s y a%s
+#define DIVs(a) ((a)>> 7)//Aquí asumimos que s=4 y b=32 por lo que s*b=128 --> 2^7=128.
+#define MODs(a) ((a) & ((s*b)-1))
+
+#define MIN(a,b) (a<b) ? a : b
+#define error(msg) {printf("\n error, ");printf(msg); printf("\n");exit(1);}
 
 
-#define error(msg){	exit(1);}
-/*	printf("\n error, ");
-	printf(msg);
-	printf("\n");
-	*/
+typedef unsigned char byte;
+#ifndef uchar
+#define uchar unsigned char
+#endif
+
+byte RankTable[255];
+char MinExcessTable[255];
+char *MinExcessBitmap;  //estructura que mantiene los excesos minimos del bitmap que representa la estructura del árbol
+char *MinExcessBitmap_RS;  //estructura que mantiene los excesos minimos del bitmap que representa la estructura del árbol para un total de (RS*b) bit
+byte NumOfLeaves[255];
+
+#define mask31 0x0000001F
+
+#define max(x,y) ((x)>(y)?(x):(y))
+#define min(x,y) ((x)<(y)?(x):(y))
+
+/*numero de bits del entero de la maquina*/
+#define W 32
+/* W-1 */
+#define Wminusone 31
+/*numero de bits del entero de la maquina*/
+#define WW 64
+/*bits para hacer la mascara para contar mas rapido*/
+#define bitsM 8
+/*bytes que hacen una palabra */
+#define BW 4
+
+#ifndef uchar
+#define uchar unsigned char
+#endif
+
+#define size_uchar 256
+
+#define true 1
+
+#define false 0
+
+const unsigned char popcount_tab[] =
+{
+0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8,
+};
+
+
+ulong *bitmap_ulong, b=32,s=4; //Variable utilizada para mantener el arreglo de parentesis luego de convertirlo a ulong.
+
+
+/**********************************************
+        Procesos que estaban como inline
+**********************************************/
+ulong popLeaves (register int x, int *bandera) {
+	ulong y;
+	y =  NumOfLeaves[(x >>  0) & 0xff]  + NumOfLeaves[(x >>  8) & 0xff]  + NumOfLeaves[(x >> 16) & 0xff]  + NumOfLeaves[(x >> 24) & 0xff];
+
+	//bandera es la variable que indica si el nro que se chequeo previamente terminaba en 1, si es así y además el ulong actual empieza con cero, estamos en presencia de una hoja.
+	if (*bandera && (((x >>  24) & 0xff) < 128)) y=y+1;
+
+	//Realizamos el & (and logico) con uno porque necesitamos saber si el nro es par o impar y con esta operación realizamos el modulo 2 de un nro.
+	if ((((x >>  24) & 0xff) & 1) && (((x >>  16) & 0xff) < 128))
+			y=y+1;
+
+	if ((((x >>  16) & 0xff) & 1) && (((x >>  8) & 0xff) < 128))
+				y=y+1;
+
+	if ((((x >>  8) & 0xff) & 1) && (((x >>  0) & 0xff) < 128))
+				y=y+1;
+
+	//Si el byte menos significativo del ulong termina en 1 debemos ver si el byte mas significativo del ulong siguiente compienza con cero, en tal caso estamos en presencia de una hoja.
+	if (((x >>  0) & 0xff) & 1)
+		*bandera=1;
+	else
+		*bandera=0;
+
+	return (y);
+	}
+
+ulong popcount (register int x) {
+   return ( popcount_tab[(x >>  0) & 0xff]  + popcount_tab[(x >>  8) & 0xff]  +
+            popcount_tab[(x >> 16) & 0xff]  + popcount_tab[(x >> 24) & 0xff] );
+}
+
+
+
+
+//#define error(msg) {printf("\n error, ");printf(msg); printf("\n");exit(1);}
+//------------------------------------------------------------------------------------------
+// Crea tablas con cantidad de unos, exceso de ceros y cantidad de hijos de los nro 0 al 255
+//------------------------------------------------------------------------------------------
+void initRankExcLeavesTables()
+{
+ulong i, j, aux;
+char actualExcess;
+int is_one;
+
+      memset(RankTable,0, 255);
+      memset(MinExcessTable,8, 255);
+      memset(NumOfLeaves,0,255);
+      for (i=0; i<256; i++)
+      {	    actualExcess=0; aux=i; is_one=0;
+            for (j=0; j<8; j++)
+            {      if (aux&128)
+                   {   RankTable[i]++; actualExcess++;is_one=1;}
+                   else
+                   {   actualExcess--;
+                   	   if(is_one)
+                   	   {  NumOfLeaves[i]++; is_one=0;}
+                   }
+
+                   if (actualExcess < MinExcessTable[i])
+                        MinExcessTable[i]=actualExcess;
+                   aux =aux<<1;
+            }
+      }
+
+}
+
+// FIN --- Crea tablas con cantidad de unos, exceso de ceros y cantidad de hijos de los nro 0 al 255
+//------------------------------------------------------------------------------------------
+
+
+// Convierte un arreglo de uchar a uno de ulong
+//bitmap_char arreglo de uchar a convertir tener en cuenta que nos devuelve un arreglo de ulong sin modificar el
+//arreglo de uchar
+//bitmap_long arreglo de ulong en el que será devuelto el arreglo convertido
+//cant_bits_bitmap cantidad de bit que tiene el arreglo de uchar
+void uchartoulong(byte *bitmap_char, ulong **bitmap_long, ulong cant_bits_bitmap){
+	int i, aux, aux2;
+	ulong tam_bitmap_byte, tam_bitmap_ulong;
+	byte *bitmap_char_aux;
+
+	if MODb(cant_bits_bitmap){
+		tam_bitmap_byte= DIV(cant_bits_bitmap)+4;
+		tam_bitmap_ulong= DIVb(cant_bits_bitmap)+1;
+	}
+	else{
+		tam_bitmap_byte= DIV(cant_bits_bitmap);
+		tam_bitmap_ulong= DIVb(cant_bits_bitmap)+1;
+	}
+
+	bitmap_char_aux=(byte *)malloc(sizeof(byte)*tam_bitmap_byte);
+	*bitmap_long=(ulong *)malloc(sizeof(ulong)*tam_bitmap_ulong);
+	//*bitmap_long=(ulong *)realloc(*bitmap_long,tam_bitmap_ulong);
+
+	memset(bitmap_char_aux,0, tam_bitmap_byte);
+	memset(*bitmap_long,0, tam_bitmap_ulong);
+
+	i=4;
+	aux=0;
+	aux2=i-1;
+	while (i<= tam_bitmap_byte)
+	{
+		while (aux<i){
+			bitmap_char_aux[aux2]=bitmap_char[aux];
+			aux2-=1;
+			aux+=1;
+		}
+		i=i+4;
+		aux2=i-1;
+	}
+
+	*bitmap_long=(ulong *)bitmap_char_aux;
+}
+
+
+
+//------------------------------------------------------------------------------------------
+// Crea tablas con exceso de ceros tomando de a 32 bit (4 Bytes) del Bipmap creado
+// bitmap: es la estructura que mantiene los bit que conforman la estructura del árbol
+// MinExcessBitmap: es un tabla global que mantiene los excesos minimos del bitmap
+// last: Cantidad de bytes que tiene el bitmap
+// b: variable global que nos da el tamaño del registro.
+//------------------------------------------------------------------------------------------
+void initExcBitmapTables(ulong *bitmap,ulong last)
+{
+	ulong i, j, aux, ulong_size_bitmap, cant_bit_sobrantes, Rs_size_bitmap, is=0, cur_is=0;
+	char actualExcess;
+	char actualExcess_Rs; //Mantiene el exceso minimo para la estructura Rs
+
+	  ulong_size_bitmap=DIVb(last);  //Ver el tema si modificamos b #define DIVS(a) ((a)>> 5)
+	  Rs_size_bitmap=DIVs(last);
+
+	  MinExcessBitmap=(char *)realloc(MinExcessBitmap,ulong_size_bitmap+1);
+      memset(MinExcessBitmap,8, ulong_size_bitmap+1);
+
+      MinExcessBitmap_RS=(char *)realloc(MinExcessBitmap_RS,Rs_size_bitmap+1);
+      memset(MinExcessBitmap_RS,8, Rs_size_bitmap+1);
+
+      actualExcess_Rs=0;
+	  for (i=0; i<ulong_size_bitmap; i++)
+	  {	    actualExcess=0; aux=bitmap[i];
+			if (is==s) //La estructura MinExcessBitmap_RS toma de a "s" ulong
+			{
+				cur_is+=1;
+				actualExcess_Rs=0;
+				is=0;
+			}
+
+			for (j=0; j<32; j++)
+			{      if (aux&(1<<b-1))
+					{ //2147483648 en binario  1000 0000 0000 0000 0000 0000 0000 0000  (2^(b-1))
+					  actualExcess++;
+					  actualExcess_Rs++;
+					}
+				   else
+				   {
+					 actualExcess--;
+					 actualExcess_Rs--;
+				   }
+
+				   if (actualExcess < MinExcessBitmap[i])
+						MinExcessBitmap[i]=actualExcess;
+				   if (actualExcess_Rs < MinExcessBitmap_RS[cur_is])
+					    MinExcessBitmap_RS[cur_is]=actualExcess_Rs;
+				   aux=aux<<1;
+			}
+			is+=1;
+	  }
+
+	  if(MODs(last)<=32){cur_is+=1;actualExcess_Rs=0;}
+
+      if (cant_bit_sobrantes=MODb(last)){ //En esta sección sacamos el exceso del los últimos bit, es decir puede suceder que nuestro bitmap tenga T modulos de 32bit y el último sólo resten de 0 a 31 bit por lo tanto debemos realizar un trabajo diferenciados sobre ellos
+    	  // MODS(a) ((a) & 31)
+    	  actualExcess=0; aux=bitmap[i];
+    	  for (j=0; j<cant_bit_sobrantes; j++)//cant_bit_sobrantes es la cantidad de bits que no completan un ulong de 32 bits
+    	  {   if (aux&(2^(cant_bit_sobrantes-1)))
+    	  	  {
+    		  	  actualExcess++;
+    		  	  actualExcess_Rs++;
+    	  	  }
+    	  	  else
+    	  	  {
+    	  		  actualExcess--;
+    	  		  actualExcess_Rs--;
+    	  	  }
+    	  	  if (actualExcess < MinExcessBitmap[i])
+    	  		  MinExcessBitmap[i]=actualExcess;
+    	  	  if (actualExcess < MinExcessBitmap_RS[cur_is])
+    	  		  MinExcessBitmap_RS[cur_is]=actualExcess_Rs;
+    	  	  aux =aux<<1;
+    	  }
+      }
+
+}
+
+
+int isleaf(byte *tree,ulong pos)
+{
+	pos++;
+	if(tree[DIV(pos)] & (128>> MOD(pos++)))
+		return 0; //No es hoja
+	else
+		return 1; //es hoja
+}
+
+
+ulong FindCloseOrig(ulong *bitmap_ulong, ulong pos, ulong last, ulong *nroNodo, ulong *nroHoja)
+{
+		ulong *A;
+
+		A=bitmap_ulong;
+		int E, is_one=0,bandera, break_byte=1, break_ulong=1, cont_s;
+ 	    ulong *aux_ulong, *aux_ulong2,pos_aux, exce_maximo=0;
+ 	    byte *aux_byte, *aux_byte2;
+ 	    int pos_bits, of_bits=0;
+ 	 	aux_ulong=(ulong *) malloc(sizeof(ulong)*1);
+ 	 	aux_ulong2=(ulong *) malloc(sizeof(ulong)*1);
+
+ 	 	*aux_ulong = A[DIVb(pos)];
+ 	 	aux_byte=(byte *)aux_ulong;
+
+ 	 	pos_bits=MODb(pos);
+
+ 	 	E=-1; pos++; pos_bits++;
+
+		 if ((MODs(pos))) { //Si esta en posición modulo s*b = 0  directamente procesamos de a s*b bit
+
+			if ((MODb(pos))) { //Si esta en posición modulo 32 = 0  directamente procesamos de a ulong
+
+
+				 //********************   Procesa de a bits *******************//
+				// procesamos los primeros bits hasta llegar al inicio de un byte
+
+				 if (MOD(pos_bits))
+				 {of_bits=1;
+					 while ( MOD(pos_bits) && E!=0)
+					 {     if (aux_byte[3-DIV(pos_bits)] & (128>> MOD(pos_bits++)) )
+						   { E--; is_one=1; (*nroNodo)++;}
+						   else
+						   { E++;
+							 if(is_one){(*nroHoja)++;is_one=0;}
+						   }
+						 pos++;
+					 }
+				 }
+				 else{ //else MOD --Verificamos si el cero correspondiente al uno se encuentra el el inicio del
+					 //byte. Estariamos en presencia de un hoja que tiene su 1 en un byte y su cero el inicio del
+					 //proximo byte.
+					 if (!(aux_byte[3-DIV(pos_bits)] & (128>> MOD(pos_bits)) ))
+					 { E++; pos++; pos_bits++;}
+				 }
+				/*if ((!(MOD(pos))) && pos < last)
+					if ( ((A[DIV(pos)-1]) & (128>> 7)) && (A[DIV(pos)] < 128) ) (*nroHoja)++;//Realizamos esta consulta para saber si el nro anterior termina en 1 y el siguiente empieza en 0, si este es el caso estamos en presencia de una hoja.
+				*/
+			}
+			else{//else MODb -- Sólo ingresa cuando búscamos el cero para el uno que esta al final de un ulong y
+				//verificamos si el siguiente ulong comienza con 0, podemos ver que es una hoja cuyo uno esta al
+				//final de un ulong y su cero esta al inicio del siguiente ulong.
+				*aux_ulong = A[DIVb(pos)];
+				aux_byte=(byte *)aux_ulong;
+				pos_bits=MODb(pos);
+				if (!(aux_byte[3-DIV(pos_bits)] & (128>> MOD(pos_bits)) ))
+				{ E++; pos++;pos_bits++;}
+			}
+		 }
+		 else //else MODs  --
+		 {  if (!(A[DIVb(pos)]&(1<<b-1)))
+				{ E++; pos++;pos_bits++;}
+		 }
+
+
+        //********************   Procesa de a bytes *******************//
+
+	 if ((MODs(pos))){  //Si esta en posición modulo s*b = 0  directamente procesamos de a s*b bit
+
+        if ((MODb(pos))) {
+			// se procesa de a bytes
+        	// bandera=0;  Descomenar en caso de realizar el proceso de hojas llamando a pop_leaves
+			while (pos+8 < last && E!=0 && MODb(pos))  //RECORDAR QUE PUSIMOS <= last DEBEMOS PROBAR SI FUNCIONA
+			{
+				  if (of_bits){//Si pos_bit dividido 8 da cero (0). Estamos en el situación donde pos_bit queda sobre el bit cero de nuestra estructura y por lo tanto no se ha hecho un procesamiento de a bits.
+					  if ( ((aux_byte[3-DIV(pos_bits)+1]) & (128>> 7)) && (aux_byte[3-DIV(pos_bits)] < 128) ) (*nroHoja)++;//Realizamos esta consulta para saber si el nro anterior termina en 1 y el siguiente empieza en 0, si este es el caso estamos en presencia de una hoja.
+				  }
+				  else
+					  of_bits=1;
+				  if ( MinExcessTable[ aux_byte[3-DIV(pos_bits)] ] <= E){
+					  break_byte=0;
+					  break;double time, tot_time = 0;
+				  }
+				  else  { E -= 2 * RankTable[ aux_byte[3-DIV(pos_bits)] ] - 8 ; //exceso total
+				  //      E -= 2 * popcount8(aux_byte[3-DIV(pos_bits)]) - 8 ; //exceso total
+						  (*nroNodo)+= RankTable [ aux_byte[3-DIV(pos_bits)]];
+						//(*nroNodo)+=popcount8(aux_byte[3-DIV(pos_bits)]);
+						  (*nroHoja)+= NumOfLeaves[ aux_byte[3-DIV(pos_bits)]];
+						//(*nroHoja)+=popLeaves8(aux_byte[3-DIV(pos_bits)], &bandera);
+						}
+				  pos+=8;
+				  pos_bits+=8;
+			  //if ( ((A[DIV(pos)-1]) & (128>> 7)) && (A[DIV(pos)] < 128) ) (*nroHoja)++;
+			}
+        }
+	 }
+
+
+		if (break_byte){
+			if((aux_byte[0] & 128>> 7) && of_bits)
+				bandera=1;
+			else
+				bandera=0;
+
+			//********************   Procesa de a ulong *******************//
+			while (pos+b < last && E!=0 && MODs(pos))
+				// se procesa de a ulong
+			{     if ( MinExcessBitmap[ DIVb(pos) ] <= E){
+						break_ulong=0;
+						break;
+					}
+				  else  { E -= 2 * popcount( A[DIVb(pos)] ) - b ; //exceso total b=32 en este caso
+						  (*nroNodo)+= popcount ( A[DIVb(pos)]);
+						  (*nroHoja)+= popLeaves( A[DIVb(pos)], &bandera);
+						}
+				  pos+=b;
+
+			}
+
+
+			if (break_ulong){
+			//********************   Procesa de a (s*b) bit *******************//
+				while (pos+(b*s) < last && E!=0)
+				{
+					//if(pos>=14011554 && pos<=14011810)
+						//cont_s=0;
+					  cont_s=0;
+					  exce_maximo=0;
+					  if ( MinExcessBitmap_RS[ DIVs(pos) ] <= E)
+							break;
+					  else
+					  {
+						  pos_aux=DIVb(pos);
+						  while(cont_s<s){
+							  exce_maximo+= popcount( A[pos_aux] );
+							  (*nroNodo)+= popcount ( A[pos_aux]);
+							  (*nroHoja)+= popLeaves( A[pos_aux], &bandera);
+							  pos_aux+=1;
+							  cont_s+=1;
+						  }
+						  E -= 2 * exce_maximo - b*s ; //exceso total s*b
+					   }
+					  pos+=b*s;
+				}
+			}
+
+
+			//********************   Procesa de a ulong *******************//
+			while (pos+b < last && E!=0)
+				// se procesa de a ulong
+			{     if ( MinExcessBitmap[ DIVb(pos) ] <= E)
+						break;
+
+				  else  { E -= 2 * popcount( A[DIVb(pos)] ) - b ; //exceso total b=32 en este caso
+						  (*nroNodo)+= popcount ( A[DIVb(pos)]);
+						  (*nroHoja)+= popLeaves( A[DIVb(pos)], &bandera);
+						}
+				  pos+=b;
+			}
+
+
+			if (E!=0)
+				if (!(A[DIVb(pos)]&(1<<b-1)) && bandera) (*nroHoja)++;
+				/*
+				*aux_ulong = A[DIVb(pos)];
+				*aux_ulong2 = A[DIVb(pos)-1];
+				aux_byte=(byte *)aux_ulong;
+				aux_byte2=(byte *)aux_ulong2;
+				pos_bits=MODb(pos);
+				if ( ((aux_byte2[0]) & (128>> 7)) && (aux_byte[3-DIV(pos_bits)] < 128) ) (*nroHoja)++; //Realizamos esta consulta para saber si el nro anterior termina en 1 y el siguiente empieza en 0, si este es el caso estamos en presencia de una hoja.
+				*/
+		}
+
+
+		//********************   Procesa de a bytes *******************//
+
+		//Esta pensado para trabajar con b=32 por lo tanto siempre que frene la iteración anterior es porque llegamos al final o no existen b bit pas procesar. En este último caso siempre queda sobre el comienzo de un byte
+		// se procesa de a bytes
+        *aux_ulong2=0; //Es utilizado para
+        *aux_ulong = A[DIVb(pos)];
+        aux_byte=(byte *)aux_ulong;
+        pos_bits=MODb(pos);
+		while (pos+8 < last && E!=0)
+		{
+			if (*aux_ulong2){ //Aquí se debe realizar esta pregunta luego de haber avanzado al menos una ves en el byte en cuestión
+				if ( ((aux_byte[3-DIV(pos_bits)+1]) & (128>> 7)) && (aux_byte[3-DIV(pos_bits)] < 128) ) (*nroHoja)++; //Realizamos esta consulta para saber si el nro anterior termina en 1 y el siguiente empieza en 0, si este es el caso estamos en presencia de una hoja.
+
+			}
+			else
+				*aux_ulong2=1;
+
+			if ( MinExcessTable[ aux_byte[3-DIV(pos_bits)] ] <= E)
+				  break;
+			  else  { E -= 2 * RankTable[ aux_byte[3-DIV(pos_bits)] ] - 8 ; //exceso total
+			        //E -= 2 * popcount8(aux_byte[3-DIV(pos_bits)]) - 8 ; //exceso total
+					  (*nroNodo)+= RankTable [ aux_byte[3-DIV(pos_bits)]];
+					//(*nroNodo)+=popcount8(aux_byte[3-DIV(pos_bits)]);
+					  (*nroHoja)+= NumOfLeaves[ aux_byte[3-DIV(pos_bits)]];
+					//(*nroHoja)+=popLeaves8(aux_byte[3-DIV(pos_bits)], &bandera);
+					}
+			  pos+=8;
+			  pos_bits+=8;
+		  //if ( ((A[DIV(pos)-1]) & (128>> 7)) && (A[DIV(pos)] < 128) ) (*nroHoja)++;
+		}
+
+
+		//********************   Procesa de a bits *******************//
+		if (pos+8 >= last && E!=0){
+				if ((pos<last) && ((aux_byte[3-DIV(pos_bits)+1]) & (128>> 7)) && (aux_byte[3-DIV(pos_bits)] < 128) ) (*nroHoja)++;}
+		is_one=0;
+        while (E!=0 && pos <last)
+        {
+        		if (aux_byte[3-DIV(pos_bits)] & (128>> MOD(pos_bits++)) )
+               { E--; is_one=1; (*nroNodo)++;}
+               else
+               { E++;
+               	 if(is_one){(*nroHoja)++;is_one=0;}
+               }
+        	pos++;
+        }
+
+        free(aux_ulong);
+        free(aux_ulong2);
+        //free(aux_byte);
+        //free(aux_byte2);
+        if (E!=0)
+              error ("en FindClose, no lo encontro");
+        return (pos-1);
+}
+
+
+
+/* #######################################   FIN CODIGO DARIO ###################################### */
+
 
 //-----------------------------------------------------------------
 ///------------------------------> PILA
@@ -279,7 +776,6 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 	bool lastWasZero=false;
 	topePila=-1;
 
-	//declaro un nodo para la pila
 	tipoPila nodoPila;
 
 	//itero cada bit segun la cantidad de bits que me pasaron por parametro
@@ -292,7 +788,6 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 		//cout << "bitsCount: " << bitsCount;
 		cout << "arrayPos:  " << arrayPos << endl;
 		cout << "bitToByte: " << bitToByte << endl;
-
 		//cout << "text[arrayPos]: " << text[arrayPos];
 
 		//evaluo si en esa posicion hay un '1' o un '0'
@@ -318,36 +813,37 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 		{
 			if(lastWasZero)
 			{// si anterior fue un cero
-if(topePila<=level)
-{
-				cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
-				//1- guardo la posicion del bit que estoy mirando
-				pila[topePila].positionBit = eachBit;
+				if(topePila<=level)
+				{
+					cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
+					//1- guardo la posicion del bit que estoy mirando
+					pila[topePila].positionBit = eachBit;
 
-				//2- guardo en los arreglos de resultados de findClose cada valor
-				//a) guardo en arreglo de nodos
-				addSpaceStructUlong(&nodes, &totalCountNodes, &totalCountNodesUsed, numberNodesToRequest, nodoPila.positionArray);
-				totalCountNodesUsed ++;
-				nodes[pila[topePila].positionArray] = pila[topePila].nodes;
+					//2- guardo en los arreglos de resultados de findClose cada valor
+					//a) guardo en arreglo de nodos
+					addSpaceStructUlong(&nodes, &totalCountNodes, &totalCountNodesUsed, numberNodesToRequest, nodoPila.positionArray);
+					totalCountNodesUsed ++;
+					nodes[pila[topePila].positionArray] = pila[topePila].nodes;
 
-				//b) guardo en arreglo de hojas
-				addSpaceStructUlong(&leaves, &totalCountLeaves, &totalCountLeavesUsed, numberLeavesToRequest, nodoPila.positionArray);
-				totalCountLeavesUsed ++;
-				leaves[pila[topePila].positionArray] = pila[topePila].leaves;
+					//b) guardo en arreglo de hojas
+					addSpaceStructUlong(&leaves, &totalCountLeaves, &totalCountLeavesUsed, numberLeavesToRequest, nodoPila.positionArray);
+					totalCountLeavesUsed ++;
+					leaves[pila[topePila].positionArray] = pila[topePila].leaves;
 
-				//c) guardo la posicion del bit
-				addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
-				totalCountPositionCloseUsed ++;
-				positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
+					//c) guardo la posicion del bit
+					addSpaceStructUlong(&positionClose, &totalCountPositionClose, &totalCountPositionCloseUsed, numberPositionCloseToRequest, nodoPila.positionArray);
+					totalCountPositionCloseUsed ++;
+					positionClose[pila[topePila].positionArray] = pila[topePila].positionBit;
 
-				//3-Guardo en el mapa
-				mapa[pila[topePila].positionInitial] = pila[topePila].positionArray;
-				cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
+					//3-Guardo en el mapa
+					mapa[pila[topePila].positionInitial] = pila[topePila].positionArray;
+					cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
 
-				//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
-				if(positionArrayClose < pila[topePila].positionArray)
-					positionArrayClose = pila[topePila].positionArray;
-}
+					//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
+					if(positionArrayClose < pila[topePila].positionArray)
+						positionArrayClose = pila[topePila].positionArray;
+				}
+
 				if(topePila > 0)
 				{
 					//5- Bajo la informacion a la posicion anterior en la pila
@@ -430,20 +926,23 @@ int es_hoja(unsigned char text[], ulong pos)
 		return 1; //es hoja
 }
 
-ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
+ulong findClose(ulong *textUlong, ulong currentPosition, ulong currentLevel, ulong bitsCount, ulong givenLevel, ulong *cantNodos, ulong *cantHojas)
 {
-	ulong eachPositionClose;
-//	if(currentLevel < givenLevel)
-//	{
+	ulong eachPositionClose,positionArrays;
+	if(currentLevel <= givenLevel)
+	{
 		//usar estructura mia para saber donde cierra X nodo
-		//return positionClose[estruc_q_falta[currentPosition]]
+		//TODO no devolver un mapa sino usar la ultima posicion usada +1, Sacar mapa usando la ultima posicion usada, devuelvo la siguiente
+		positionArrays = mapa[currentPosition];
 		eachPositionClose = positionClose[mapa[currentPosition]];
-/*	}
+		*cantNodos = nodes[positionArrays];
+		*cantHojas = leaves[positionArrays];
+	}
 	else
 	{
 		//usar el findClose de Dario
-		//eachPositionClose =
-	}*/
+		eachPositionClose = FindCloseOrig(textUlong, currentPosition, bitsCount, cantNodos, cantHojas);
+	}
 	return eachPositionClose;
 }
 
@@ -461,9 +960,6 @@ ulong findClose(ulong currentPosition, ulong currentLevel, ulong givenLevel)
 
 ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
 {
-//	ulong arrayPos = (currentPosition >> 3);
-//	ulong bitToByte = (currentPosition & 7);
-
 	if(currentPosition==0)
 	{
 		*statusNode = 1;
@@ -471,13 +967,12 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *status
 	}
 
 	//evaluo si en esa posicion hay un '1' o un '0'
-	//if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 	if(es_un_uno(text, currentPosition))
 	{
 		if(*statusNode == 1)
 			currentLevel++;
 		else
-			*statusNode = 0;
+			*statusNode = 1;
 	}
 	else
 	{
@@ -486,10 +981,11 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *status
 		else
 			currentLevel--;
 	}
+	//cout << "la posicion " << currentPosition << " esta en el nivel " << currentLevel << endl;
 	return currentLevel;
 }
 
-void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel)
+void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel, ulong * cantNodos, ulong * cantHojas, ulong *textUlong)
 {
 	ulong currentLevel = 0;
 	ulong statusNode = 0; //0=cerrado, 1=abierto
@@ -497,16 +993,21 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	{
+		currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
 		if(es_un_uno(text, eachBit))
 		{
-			currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
 
-			if(es_hoja(text, eachBit))
+			ulong eshoja = es_hoja(text, eachBit);
+			if(eshoja)
 				eachPositionClose = (eachBit+1);
 			else
-				eachPositionClose = findClose(eachBit, currentLevel, givenLevel);
+				eachPositionClose = findClose(textUlong, eachBit, currentLevel, bitsCount, givenLevel, cantNodos, cantHojas);
 
-			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose << endl;
+			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
+			if(eshoja)
+				cout << endl;
+			else
+				cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
 		}
 	}
 }
@@ -524,7 +1025,15 @@ int main (int argc, char *argv[])
 	buildFindClose(allText, 5, 36, 3);
 
 	//findClose(allText);
-	getStatics(allText, 5, 36, 3);
+	ulong cantNodos=0;
+	ulong cantHojas=0;
+	ulong posFindClose = 0;
+
+	//convierto el unsigned char en unsigned long
+	ulong *textUlong ;
+	uchartoulong(allText, &textUlong, 36);
+
+	getStatics(allText, 5, 36, 3, &cantNodos, &cantHojas, textUlong);
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
