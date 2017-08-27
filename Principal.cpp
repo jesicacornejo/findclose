@@ -958,7 +958,7 @@ ulong findClose(ulong *textUlong, ulong currentPosition, ulong currentLevel, ulo
   	 - si en esa posicion hay un 0 y esta cerrado ('c'=0) -> decrementa nivel
  */
 
-ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *statusNode, ulong currentLevel)
+ulong getCurrentLevel(ulong currentPosition, ulong *statusNode, ulong currentLevel, ulong esUnUno)
 {
 	if(currentPosition==0)
 	{
@@ -967,7 +967,7 @@ ulong getCurrentLevel(unsigned char text[], ulong currentPosition, ulong *status
 	}
 
 	//evaluo si en esa posicion hay un '1' o un '0'
-	if(es_un_uno(text, currentPosition))
+	if(esUnUno)
 	{
 		if(*statusNode == 1)
 			currentLevel++;
@@ -993,10 +993,10 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	{
-		currentLevel = getCurrentLevel(text, eachBit, &statusNode, currentLevel);
-		if(es_un_uno(text, eachBit))
+		ulong esUnUno = es_un_uno(text, eachBit);
+		currentLevel = getCurrentLevel(eachBit, &statusNode, currentLevel, esUnUno);
+		if(esUnUno)
 		{
-
 			ulong eshoja = es_hoja(text, eachBit);
 			if(eshoja)
 				eachPositionClose = (eachBit+1);
@@ -1004,18 +1004,14 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 				eachPositionClose = findClose(textUlong, eachBit, currentLevel, bitsCount, givenLevel, cantNodos, cantHojas);
 
 			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
-			if(eshoja)
-				cout << endl;
-			else
-				cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
+			if(eshoja) cout << " y es una hoja" << endl;
+			else  cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
 		}
 	}
 }
 
 int main (int argc, char *argv[])
 {
-	//original
-	//111011010100100110100110101101010000
 	unsigned char allText[5];
 	allText[0] = 237; 	//11101101 = 128+64+32+0+8+4+0+1 =237
 	allText[1] = 73; 	//01001001 = 0+64+0+0+8+0+0+1 = 73
@@ -1024,7 +1020,6 @@ int main (int argc, char *argv[])
 	allText[4] = 0; 	//00000000 = 0
 	buildFindClose(allText, 5, 36, 3);
 
-	//findClose(allText);
 	ulong cantNodos=0;
 	ulong cantHojas=0;
 	ulong posFindClose = 0;
@@ -1046,7 +1041,6 @@ int main (int argc, char *argv[])
 	allText[7] = 0;
 	findClose(allText, 8, 58);
 */
-
 
 
 }
