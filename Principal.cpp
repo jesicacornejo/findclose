@@ -13,6 +13,13 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+
+/* only for getTime() */
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <time.h>
+
 using namespace std;
 
 //defino el tipo ulong
@@ -326,7 +333,6 @@ ulong FindCloseOrig(ulong *bitmap_ulong, ulong pos, ulong last, ulong *nroNodo, 
 		 if ((MODs(pos))) { //Si esta en posición modulo s*b = 0  directamente procesamos de a s*b bit
 
 			if ((MODb(pos))) { //Si esta en posición modulo 32 = 0  directamente procesamos de a ulong
-
 
 				 //********************   Procesa de a bits *******************//
 				// procesamos los primeros bits hasta llegar al inicio de un byte
@@ -751,18 +757,13 @@ void initNode(tipoPila *nodoPila)
 	}
 	//nodoPila->subString='';
 }
-//TODO metodo no usado
-void setInfoNode(tipoPila *nodoPila, int positionBit, int positionArray, char subString)
-{
-	nodoPila->nodes=0;
-	nodoPila->leaves=0;
-	nodoPila->positionBit=positionBit;
-	nodoPila->positionArray=positionArray;
-}
+
 //<================================ fin METODOS PILA
 
 
 /**
+ * Metodo que calcula las posiciones de cierre, cantidad de nodos y cantidad de hojas.
+ *
  * text: arreglo de caracteres que contiene el texto en bytes.
  * size: tamaño del arreglo de caracteres text.
  * bitsCount: cantidad de bits porque puede que el texto tenga una cantidad de bits que no necesariamente sea multiplo de 8 (cant de bits en un byte)
@@ -784,28 +785,23 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 		arrayPos = (eachBit >> 3);
 		bitToByte = (eachBit & 7); //va de 0 a 7
 
-		cout << "eachBit:   " << eachBit << endl;
-		//cout << "bitsCount: " << bitsCount;
-		cout << "arrayPos:  " << arrayPos << endl;
-		cout << "bitToByte: " << bitToByte << endl;
+//		cout << "eachBit:   " << eachBit << endl;
+//		cout << "arrayPos:  " << arrayPos << endl;
+//		cout << "bitToByte: " << bitToByte << endl;
 		//cout << "text[arrayPos]: " << text[arrayPos];
 
 		//evaluo si en esa posicion hay un '1' o un '0'
 		// 128 >> bitToByte = 128>>0 o 128>>1 o 128>>2 o 128>>3 o .... 128>>7. Osea va corriendo el 1 de 10000000 (128)
 		if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 		{
-			cout << "es un UNO !!!! "<< endl<< endl;
-			//inicializo nodos y hojas
-			initNode(&nodoPila);
+			//cout << "es un UNO !!!! "<< endl<< endl;
+			initNode(&nodoPila); //inicializo nodos y hojas
 
-			//copio la posicion del bit dentro de todo el array
-			nodoPila.positionBit = eachBit;
+			nodoPila.positionBit = eachBit; //copio la posicion del bit dentro de todo el array
 
-			//seteo donde comienza el nodo
-			nodoPila.positionInitial = eachBit;
+			nodoPila.positionInitial = eachBit; //seteo donde comienza el nodo
 
-			//subo en la pila
-			push(&pila, nodoPila);
+			push(&pila, nodoPila);//subo en la pila
 
 			lastWasZero = false;
 		}
@@ -815,7 +811,7 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 			{// si anterior fue un cero
 				if(topePila<=level)
 				{
-					cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
+					//cout << "es un CERO !!!! y el ultimo fue un CERO"<< endl << endl;
 					//1- guardo la posicion del bit que estoy mirando
 					pila[topePila].positionBit = eachBit;
 
@@ -837,7 +833,7 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 
 					//3-Guardo en el mapa
 					mapa[pila[topePila].positionInitial] = pila[topePila].positionArray;
-					cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
+					//cout << "inicia en = " << pila[topePila].positionInitial << " y el resultado esta en = " << pila[topePila].positionArray << endl;
 
 					//4- actualizo la ultima posicion que hemos completado en los arreglos resultantes del findClose
 					if(positionArrayClose < pila[topePila].positionArray)
@@ -856,7 +852,7 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 			else
 			{// si anterior fue un uno
 
-				cout << "es un CERO !!!! y el ultimo fue un UNO"<< endl<< endl;
+				//cout << "es un CERO !!!! y el ultimo fue un UNO"<< endl<< endl;
 
 				//incremento nodos y hojas
 				nodoPila.nodes = nodoPila.nodes + 1;
@@ -947,6 +943,8 @@ ulong findClose(ulong *textUlong, ulong currentPosition, ulong currentLevel, ulo
 }
 
 /**
+ * Me da el 'nivel actual' para la posicion del 'bit actual' dado por parametro.
+ *
  * text		: contiene el texto a evaluar
  * eachBit	: indica la posicion dentro del texto
  * statusNode: nos indica si un nodo esta cerrado o abierto ('a'=abierto, 'c'=cerrado)
@@ -957,7 +955,6 @@ ulong findClose(ulong *textUlong, ulong currentPosition, ulong currentLevel, ulo
  	 - si en esa posicion hay un 0 y esta abierto ('a'=1) -> lo cierra ('c')
   	 - si en esa posicion hay un 0 y esta cerrado ('c'=0) -> decrementa nivel
  */
-
 ulong getCurrentLevel(ulong currentPosition, ulong *statusNode, ulong currentLevel, ulong esUnUno)
 {
 	if(currentPosition==0)
@@ -1012,13 +1009,30 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 
 int main (int argc, char *argv[])
 {
+	double fc_total_time;
+	double time, tot_time = 0;
+
+// >>>>>>>>>>>>>>> vbles para medir tiempo de ejecucion de findclose y count.
+	clock_t initTimeBuilding, finTimeBuilding;
+	double totalTimeBuilding = 0;
+
+	clock_t initTimeFindClose, finTimeFindClose;
+	double totalTimeFindClose = 0;
+// <<<<<<<<<<<<<<< vbles para medir tiempo de ejecucion de findclose y count.
+
+
 	unsigned char allText[5];
 	allText[0] = 237; 	//11101101 = 128+64+32+0+8+4+0+1 =237
 	allText[1] = 73; 	//01001001 = 0+64+0+0+8+0+0+1 = 73
 	allText[2] = 166;	//10100110 = 128+0+32+0+0+4+2+0 = 166
 	allText[3] = 181;	//10110101 = 128+0+32+16+0+4+0+1 = 181
 	allText[4] = 0; 	//00000000 = 0
+
+		initTimeBuilding = clock();
 	buildFindClose(allText, 5, 36, 3);
+		finTimeBuilding = clock();
+		totalTimeBuilding += (double)(finTimeBuilding - initTimeBuilding) / CLOCKS_PER_SEC;
+		cout << "Tiempo total de construccion en milisegundos: " << (totalTimeBuilding* 1000.0) << endl;
 
 	ulong cantNodos=0;
 	ulong cantHojas=0;
@@ -1028,7 +1042,12 @@ int main (int argc, char *argv[])
 	ulong *textUlong ;
 	uchartoulong(allText, &textUlong, 36);
 
+		initTimeFindClose = clock();
 	getStatics(allText, 5, 36, 3, &cantNodos, &cantHojas, textUlong);
+		finTimeFindClose = clock();
+		totalTimeFindClose += (double)(finTimeFindClose - initTimeFindClose) / CLOCKS_PER_SEC;
+		cout << "Tiempo total de FindClose: " << (totalTimeFindClose* 1000.0) << endl;
+
 /*
 	unsigned char allText[8];
 	allText[0] = 244;
