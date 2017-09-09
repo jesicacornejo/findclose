@@ -915,40 +915,6 @@ int es_hoja(unsigned char text[], ulong pos)
 		return 1; //es hoja
 }
 
-ulong myFindClose(ulong currentPosition, ulong *cantNodos, ulong *cantHojas)
-{
-	ulong eachPositionClose,positionArrays;
-
-	//usar estructura mia para saber donde cierra X nodo
-	//TODO no devolver un mapa sino usar la ultima posicion usada +1, Sacar mapa usando la ultima posicion usada, devuelvo la siguiente
-	positionArrays = mapa[currentPosition];
-	eachPositionClose = positionClose[mapa[currentPosition]];
-	*cantNodos = nodes[positionArrays];
-	*cantHojas = leaves[positionArrays];
-
-	return eachPositionClose;
-}
-
-ulong findClose(ulong *textUlong, ulong currentPosition, ulong currentLevel, ulong bitsCount, ulong givenLevel, ulong *cantNodos, ulong *cantHojas)
-{
-	ulong eachPositionClose,positionArrays;
-	/*if(currentLevel <= givenLevel)
-	{
-		//usar estructura mia para saber donde cierra X nodo
-		//TODO no devolver un mapa sino usar la ultima posicion usada +1, Sacar mapa usando la ultima posicion usada, devuelvo la siguiente
-		positionArrays = mapa[currentPosition];
-		eachPositionClose = positionClose[mapa[currentPosition]];
-		*cantNodos = nodes[positionArrays];
-		*cantHojas = leaves[positionArrays];
-	}
-	else
-	{
-	*/	//usar el findClose de Dario
-		eachPositionClose = FindCloseOrig(textUlong, currentPosition, bitsCount, cantNodos, cantHojas);
-	//}
-	return eachPositionClose;
-}
-
 /**
  * Me da el 'nivel actual' para la posicion del 'bit actual' dado por parametro.
  *
@@ -989,6 +955,20 @@ ulong getCurrentLevel(ulong currentPosition, ulong *statusNode, ulong currentLev
 	return currentLevel;
 }
 
+ulong myFindClose(ulong currentPosition, ulong *cantNodos, ulong *cantHojas)
+{
+	ulong eachPositionClose,positionArrays;
+
+	//usar estructura mia para saber donde cierra X nodo
+	//TODO no devolver un mapa sino usar la ultima posicion usada +1, Sacar mapa usando la ultima posicion usada, devuelvo la siguiente
+	positionArrays = mapa[currentPosition];
+	eachPositionClose = positionClose[mapa[currentPosition]];
+	*cantNodos = nodes[positionArrays];
+	*cantHojas = leaves[positionArrays];
+
+	return eachPositionClose;
+}
+
 void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel, ulong * cantNodos, ulong * cantHojas, ulong *textUlong)
 {
 	ulong currentLevel = 0;
@@ -1004,7 +984,6 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 			eachPositionClose = FindCloseOrig(textUlong, eachBit, bitsCount, cantNodos, cantHojas);
 			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
 			cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
-			//break;
 		}
 		else
 		{
@@ -1022,12 +1001,7 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 				else  cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
 			}
 		}
-
 	}
-
-//	ulong currentPosArrayULong = convert_currentPosition en la posicion correspondiente del arrayUlong
-	//usar el findClose de Dario
-	//		eachPositionClose = FindCloseOrig(textUlong, currentPosArrayULong, bitsCount, cantNodos, cantHojas);
 }
 
 int main (int argc, char *argv[])
