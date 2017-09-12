@@ -979,12 +979,17 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 	{
 		ulong esUnUno = es_un_uno(text, eachBit);
 		currentLevel = getCurrentLevel(eachBit, &statusNode, currentLevel, esUnUno);
-		if(currentLevel > givenLevel)		//uso el findClose de Dario
-		{
-			eachPositionClose = FindCloseOrig(textUlong, eachBit, bitsCount, cantNodos, cantHojas);
-			cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
-			cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
-		}
+		//if(currentLevel > givenLevel)		//uso el findClose de Dario
+		//{
+			if(esUnUno)
+			{
+				eachPositionClose = FindCloseOrig(textUlong, eachBit, bitsCount, cantNodos, cantHojas);
+				cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
+				cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
+				*cantNodos = 0;
+				*cantHojas = 0;
+			}
+		/*}
 		else
 		{
 			if(esUnUno)
@@ -1000,7 +1005,7 @@ void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLe
 					cout << " y es una hoja" << endl;
 				else  cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
 			}
-		}
+		}*/
 	}
 }
 
@@ -1037,6 +1042,8 @@ int main (int argc, char *argv[])
 	//convierto el unsigned char en unsigned long
 	ulong *textUlong ;
 	uchartoulong(allText, &textUlong, 36);
+	initRankExcLeavesTables();
+	initExcBitmapTables(textUlong, 36);
 
 		initTimeFindClose = clock();
 	getStatics(allText, 5, 36, 3, &cantNodos, &cantHojas, textUlong);
