@@ -767,7 +767,7 @@ void initNode(tipoPila *nodoPila)
  * 		por ejemplo el texto = 11001001110 tiene 11 bits que seran recibidos como 2 bytes (en text[]) un byte = 11001001, otro byte = 11000000 este ultimo se completa con 0's
  * level: indica el nivel hasta donde queremos calcular.
  */
-void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong level)
+void buildFindClose(ulong text[], ulong size, ulong bitsCount, ulong level)
 {
 	ulong arrayPos = 0;
 	ulong bitToByte = 0;
@@ -779,8 +779,8 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 	//itero cada bit segun la cantidad de bits que me pasaron por parametro
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	{
-		arrayPos = (eachBit >> 3);
-		bitToByte = (eachBit & 7); //va de 0 a 7
+		arrayPos = DIVb(eachBit) ; //(eachBit >> 3);
+		bitToByte = MODb(eachBit);	//(eachBit & 7); //va de 0 a 7
 
 //		cout << "eachBit:   " << eachBit << endl;
 //		cout << "arrayPos:  " << arrayPos << endl;
@@ -789,7 +789,8 @@ void buildFindClose(unsigned char text[], ulong size, ulong bitsCount, ulong lev
 
 		//evaluo si en esa posicion hay un '1' o un '0'
 		// 128 >> bitToByte = 128>>0 o 128>>1 o 128>>2 o 128>>3 o .... 128>>7. Osea va corriendo el 1 de 10000000 (128)
-		if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
+		//if(text[arrayPos] & (128 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
+		if(text[arrayPos] & (2147483648 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 		{
 			//cout << "es un UNO !!!! "<< endl<< endl;
 			initNode(&nodoPila); //inicializo nodos y hojas
@@ -1030,12 +1031,12 @@ int main (int argc, char *argv[])
 	allText[3] = 181;	//10110101 = 128+0+32+16+0+4+0+1 = 181
 	allText[4] = 0; 	//00000000 = 0
 
-		initTimeBuilding = clock();
+/*		initTimeBuilding = clock();
 	buildFindClose(allText, 5, 36, 3);
 		finTimeBuilding = clock();
 		totalTimeBuilding += (double)(finTimeBuilding - initTimeBuilding) / CLOCKS_PER_SEC;
 		cout << "Tiempo total de construccion en milisegundos: " << (totalTimeBuilding* 1000.0) << endl;
-
+*/
 	ulong cantNodos=0;
 	ulong cantHojas=0;
 
@@ -1044,6 +1045,13 @@ int main (int argc, char *argv[])
 	uchartoulong(allText, &textUlong, 36);
 	initRankExcLeavesTables();
 	initExcBitmapTables(textUlong, 36);
+
+
+	initTimeBuilding = clock();
+buildFindClose(textUlong, 5, 36, 3);
+	finTimeBuilding = clock();
+	totalTimeBuilding += (double)(finTimeBuilding - initTimeBuilding) / CLOCKS_PER_SEC;
+	cout << "Tiempo total de construccion en milisegundos: " << (totalTimeBuilding* 1000.0) << endl;
 
 		initTimeFindClose = clock();
 	getStatics(allText, 5, 36, 3, &cantNodos, &cantHojas, textUlong);
