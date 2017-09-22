@@ -786,6 +786,7 @@ void buildFindClose(ulong text[], ulong size, ulong bitsCount, ulong level)
 
 		//evaluo si en esa posicion hay un '1' o un '0'
 		// 128 >> bitToByte = 128>>0 o 128>>1 o 128>>2 o 128>>3 o .... 128>>7. Osea va corriendo el 1 de 10000000 (128)
+		// 2147483648(decimal) = 10000000000000000000000000000000 (binario) y vamos corriendo el 1
 		if(text[arrayPos] & (2147483648 >> bitToByte)) // este "&" devuelve un 'true' si en esa posicion hay un '1' sino devuelve false
 		{
 			//cout << "es un UNO !!!! "<< endl<< endl;
@@ -886,12 +887,12 @@ void buildFindClose(ulong text[], ulong size, ulong bitsCount, ulong level)
 /**
  * Me dice si en esa posicion del texto hay un 1 o un 0.
  */
-int es_un_uno(unsigned char text[], ulong pos)
+int es_un_uno(ulong text[], ulong pos)
 {
-	ulong arrayPos = (pos >> 3);
-	ulong bitToByte = (pos & 7); //va de 0 a 7
+	ulong arrayPos = DIVb(pos) ; //(pos >> 3);
+	ulong bitToByte = MODb(pos);	//(pos & 7); //va de 0 a 7
 
-	if(text[arrayPos] & (128>> bitToByte))
+	if(text[arrayPos] & (2147483648>> bitToByte))
 		return 1;
 	else
 		return 0;
@@ -900,7 +901,7 @@ int es_un_uno(unsigned char text[], ulong pos)
 /**
  * Me dice si esa posicion es o no una hoja.
  */
-int es_hoja(unsigned char text[], ulong pos)
+int es_hoja(ulong text[], ulong pos)
 {
 	pos++;
 	if(es_un_uno(text, pos))
@@ -963,73 +964,76 @@ ulong myFindClose(ulong currentPosition, ulong *cantNodos, ulong *cantHojas)
 	return eachPositionClose;
 }
 
-void getStatics(unsigned char text[], ulong size, ulong bitsCount, ulong givenLevel, ulong * cantNodos, ulong * cantHojas, ulong *textUlong)
+void findCloseUnified(ulong *textUlong, ulong bitsCount, ulong currentLevel, ulong givenLevel, ulong position)
+{
+	ulong eachPositionClose;
+	ulong cantNodos=0, cantHojas=0;
+	ulong eshoja = es_hoja(textUlong, position);
+	if(eshoja)
+	{
+		eachPositionClose = (position+1);
+		cout << "La posicion " << position << " cierra en -> " << eachPositionClose << " y es una hoja" << endl;
+		return;
+	}
+
+	if(currentLevel > givenLevel)		//uso el findClose de Dario
+	{
+		eachPositionClose = FindCloseOrig(textUlong, position, bitsCount, &cantNodos, &cantHojas);
+		cout << "La posicion " << position << " cierra en -> " << eachPositionClose;
+		cout << ", y tiene " << cantNodos << " nodos y " << cantHojas << " hojas." << endl;
+		cantNodos = 0;
+		cantHojas = 0;
+	}
+	else
+	{
+		eachPositionClose = myFindClose(position, &cantNodos, &cantHojas);
+		cout << "La posicion " << position << " cierra en -> " << eachPositionClose;
+		cout << ", y tiene " << cantNodos << " nodos y " << cantHojas << " hojas." << endl;
+	}
+}
+
+
+void getStatics(ulong *textUlong, ulong size, ulong bitsCount, ulong givenLevel/*, ulong * cantNodos, ulong * cantHojas*/)
 {
 	ulong currentLevel = 0;
 	ulong statusNode = 0; //0=cerrado, 1=abierto
-	ulong eachPositionClose;
 
 	// >>>>>>>>>>>>>>> vbles para medir tiempo de ejecucion de findclose modificado y original.
-		clock_t beginTimeNewFC, endTimeNewFC;
-		double timeNewFC = 0, totalTimeNewFC = 0;
-
-		clock_t beginTimeOrigFC, endTimeOrigFC;
-		double timeOrigFC = 0, totalTimeOrigFC = 0;
+		clock_t beginTimeAllFC, endTimeAllFC;
+		double totalTimeAllFC = 0;
 	// <<<<<<<<<<<<<<< FIN Vbles para medir tiempo de ejecucion de findclose y count.
 
 	for(ulong eachBit=0; eachBit < bitsCount; eachBit++)
 	{
-		ulong esUnUno = es_un_uno(text, eachBit);
+		ulong esUnUno = es_un_uno(textUlong, eachBit);
 		currentLevel = getCurrentLevel(eachBit, &statusNode, currentLevel, esUnUno);
-		if(currentLevel > givenLevel)		//uso el findClose de Dario
+		if(esUnUno)
 		{
-			if(esUnUno)
-			{
-					beginTimeOrigFC = clock();
-				eachPositionClose = FindCloseOrig(textUlong, eachBit, bitsCount, cantNodos, cantHojas);
-					endTimeOrigFC = clock();
-					totalTimeOrigFC += (double)(endTimeOrigFC - beginTimeOrigFC) / CLOCKS_PER_SEC;
-				cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
-				cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
-				*cantNodos = 0;
-				*cantHojas = 0;
-			}
-		}
-		else
-		{
-			if(esUnUno)
-			{
-				ulong eshoja = es_hoja(text, eachBit);
-				if(eshoja)
-					eachPositionClose = (eachBit+1);
-				else
-				{		beginTimeNewFC = clock();
-					eachPositionClose = myFindClose(eachBit, cantNodos, cantHojas);
-						endTimeNewFC = clock();
-						totalTimeNewFC += (double)(endTimeNewFC - beginTimeNewFC) / CLOCKS_PER_SEC;
-				}
-				cout << "La posicion " << eachBit << " cierra en -> " << eachPositionClose;
-				if(eshoja)
-					cout << " y es una hoja" << endl;
-				else  cout << ", y tiene " << *cantNodos << " nodos y " << *cantHojas << " hojas." << endl;
-			}
+				beginTimeAllFC = clock();
+			findCloseUnified(textUlong, bitsCount, currentLevel, givenLevel, eachBit);
+				endTimeAllFC = clock();
+				totalTimeAllFC += (double)(endTimeAllFC - beginTimeAllFC) / CLOCKS_PER_SEC;
 		}
 	}
 
-	cout << "El tiempo total con el FindClose MEJORADO hasta el nivel: "<< givenLevel << " fue :" << totalTimeNewFC << "ms" << endl ;
-	cout << "El tiempo total con el FindClose ORIGINAL desde el nivel "<< givenLevel << " hasta el nivel " << currentLevel << " fue :" << totalTimeNewFC << "ms" << endl ;
+	cout << "El tiempo total con el FindClose MEJORADO hasta el nivel: "<< givenLevel << " fue :" << totalTimeAllFC << "ms" << endl ;
 }
 
 int main (int argc, char *argv[])
 {
-	ulong cantNodos=0;
-	ulong cantHojas=0;
+	ulong bitsCount= 0;
+	ulong *textUlong ;
+	ulong sizeArray=0;
+	char fileName[45];
+	ulong level = 3;
 
 // >>>>>>>>>>>>>>> vbles para medir tiempo de ejecucion de findclose y count.
 	clock_t initTimeBuilding, finTimeBuilding;
 	double totalTimeBuilding = 0;
 // <<<<<<<<<<<<<<< FIN Vbles para medir tiempo de ejecucion de findclose y count.
 
+/* descomentar para probar si funciona, es un texto chico, conocido...
+/// ----------------------------------------------------------
 	unsigned char allText[5];
 	allText[0] = 237; 	//11101101 = 128+64+32+0+8+4+0+1 =237
 	allText[1] = 73; 	//01001001 = 0+64+0+0+8+0+0+1 = 73
@@ -1038,24 +1042,61 @@ int main (int argc, char *argv[])
 	allText[4] = 0; 	//00000000 = 0
 
 	// Convierto el unsigned char en unsigned long
-	ulong *textUlong ;
 	uchartoulong(allText, &textUlong, 36);
+	level = 3;
+	sizeArray = 5;
+	bitsCount = 36;
+/// ----------------------------------------------------------
+*/
+
+
+////// lectura de toda la info en files
+	FILE * file, *fileInfo;
+	if ((fileInfo=fopen("info.dat", "r+"))==NULL)
+	{
+		printf("--------------------\n");
+		printf("**Error: archivo no encontrado\n");
+		printf("--------------------\n\n\n");
+
+	}
+	else
+	{
+		fseek( fileInfo, 0L, SEEK_SET);
+		fscanf(fileInfo, "# element=%u cant_bit=%u file=%s", &sizeArray, &bitsCount, fileName);
+		textUlong = (ulong *) malloc(sizeof(ulong)*sizeArray);
+	}
+
+	if ((file=fopen(fileName, "r+"))==NULL)
+	{
+		printf("--------------------\n");
+		printf("**Error: archivo no encontrado\n");
+		printf("--------------------\n\n\n");
+
+	}
+	else
+	{
+		fseek( file, 0L, SEEK_SET);
+		fread(textUlong, sizeof(ulong), sizeArray, file);
+	}
+/////////////////////
 
 	// Metodo de inicializacion necesarios para usar el FindClose Original (de Dario)
 	initRankExcLeavesTables();
-	initExcBitmapTables(textUlong, 36);
+	initExcBitmapTables(textUlong, bitsCount);
 
 	// Construccion de estructura para el FindClose Mejorado
 		initTimeBuilding = clock();
-	buildFindClose(textUlong, 5, 36, 3);
+	buildFindClose(textUlong, sizeArray, bitsCount, level);
 		finTimeBuilding = clock();
 		totalTimeBuilding += (double)(finTimeBuilding - initTimeBuilding) / CLOCKS_PER_SEC;
 		cout << "Tiempo total de construccion en milisegundos: " << (totalTimeBuilding* 1000.0) << endl;
 
 	// Calculo de tiempos usando el FindClose original y el mejorado
-	getStatics(allText, 5, 36, 3, &cantNodos, &cantHojas, textUlong);
+	getStatics(textUlong, sizeArray, bitsCount, level);
 
-/*
+
+
+	/* otro texto chico
 	unsigned char allText[8];
 	allText[0] = 244;
 	allText[1] = 181;
